@@ -53,9 +53,17 @@ pipeline {
                         // SSH login to EC2 (use 'ubuntu' as the user for Ubuntu-based AMIs)
                         sh """
                         ssh -o StrictHostKeyChecking=no ubuntu@${EC2_INSTANCE_IP} << EOF
+                        # Authenticate with AWS ECR
+                        aws ecr get-login-password --region ${AWS_REGION} | sudo docker login --username AWS --password-stdin ${DOCKER_IMAGE}
+                        
+                        # Pull the latest image from ECR
                         sudo docker pull ${DOCKER_IMAGE}:latest
+                        
+                        # Stop and remove any existing containers
                         sudo docker ps -q --filter ancestor=${DOCKER_IMAGE}:latest | xargs -r sudo docker stop
                         sudo docker ps -a -q --filter ancestor=${DOCKER_IMAGE}:latest | xargs -r sudo docker rm
+                        
+                        # Run the Docker container
                         sudo docker run -d -p 80:80 ${DOCKER_IMAGE}:latest
                         EOF
                         """
