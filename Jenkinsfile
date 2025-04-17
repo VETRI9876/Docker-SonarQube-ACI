@@ -53,10 +53,10 @@ pipeline {
                         // SSH login to EC2 (use 'ubuntu' as the user for Ubuntu-based AMIs)
                         sh """
                         ssh -o StrictHostKeyChecking=no ubuntu@${EC2_INSTANCE_IP} << EOF
-                        docker pull ${DOCKER_IMAGE}:latest
-                        docker ps -q --filter ancestor=${DOCKER_IMAGE}:latest | xargs -r docker stop
-                        docker ps -a -q --filter ancestor=${DOCKER_IMAGE}:latest | xargs -r docker rm
-                        docker run -d -p 80:80 ${DOCKER_IMAGE}:latest
+                        sudo docker pull ${DOCKER_IMAGE}:latest
+                        sudo docker ps -q --filter ancestor=${DOCKER_IMAGE}:latest | xargs -r sudo docker stop
+                        sudo docker ps -a -q --filter ancestor=${DOCKER_IMAGE}:latest | xargs -r sudo docker rm
+                        sudo docker run -d -p 80:80 ${DOCKER_IMAGE}:latest
                         EOF
                         """
                     }
