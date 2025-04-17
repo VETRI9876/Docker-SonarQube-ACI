@@ -61,7 +61,7 @@ pipeline {
                             sudo docker rm \$CONTAINER_ID
                         fi
 
-                        sudo docker run -d -p 8087:80 ${DOCKER_IMAGE}:latest
+                        sudo docker run -d -p 8088:80 ${DOCKER_IMAGE}:latest
                         EOF
                         """
                     }
