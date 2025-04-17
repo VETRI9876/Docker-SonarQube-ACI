@@ -2,65 +2,74 @@ pipeline {
     agent any
 
     environment {
-        SONARQUBE_ENV = 'SonarQube'
-        AZURE_RG = 'myResourceGroup'                     // Change to your Azure resource group
-        AZURE_ACI = 'flask-docker-aci'                   // Name for your Azure Container Instance
-        ACR_IMAGE = 'vetridocker.azurecr.io/flask-docker-app:latest'
-        ACI_DNS = 'flaskdockerappvetri'                       // Must be unique globally
-        ACI_PORT = '5000'
-    }
-
-    tools {
-        python 'Python3'    // Jenkins Python installation
+        DOCKER_IMAGE = '409784048198.dkr.ecr.eu-north-1.amazonaws.com/vetri'
+        REPO_URL = 'https://github.com/VETRI9876/Docker-SonarQube-ACI.git'
+        EC2_INSTANCE_IP = 'your-ec2-ip'  // Replace with actual IP
+        AWS_REGION = 'eu-north-1'
+        ECR_REPO_NAME = 'vetri'
+        SSH_KEY = credentials('KEY_PAIR') // <-- This is the GitHub secret passed as env var
     }
 
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                git 'https://github.com/VETRI9876/Docker-SonarQube-ACI.git'
+                git url: "${REPO_URL}", branch: 'main'
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Build Docker Image') {
             steps {
-                sh 'pip install -r requirements.txt || pip install flask pytest'
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                sh 'pytest test_app.py'
-            }
-        }
-
-        stage('SonarQube Analysis') {
-            environment {
-                SONAR_SCANNER_OPTS = "-Dsonar.projectKey=flask-app -Dsonar.sources=."
-            }
-            steps {
-                withSonarQubeEnv("${SONARQUBE_ENV}") {
-                    sh 'sonar-scanner'
+                script {
+                    sh 'docker build -t ${DOCKER_IMAGE} .'
                 }
             }
         }
 
-        stage('Deploy to Azure Container Instance') {
+        stage('Run Tests with Pytest') {
             steps {
-                withCredentials([azureServicePrincipal('azure-credentials')]) {
-                    sh '''
-                        az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
-                        
-                        az container create \
-                          --resource-group $AZURE_RG \
-                          --name $AZURE_ACI \
-                          --image $ACR_IMAGE \
-                          --registry-login-server vetridocker.azurecr.io \
-                          --registry-username $AZURE_CLIENT_ID \
-                          --registry-password $AZURE_CLIENT_SECRET \
-                          --dns-name-label $ACI_DNS-${BUILD_NUMBER} \
-                          --ports $ACI_PORT \
-                          --location eastus
-                    '''
+                script {
+                    sh 'pytest > result.log; tail -n 10 result.log'
+                }
+            }
+        }
+
+        stage('Scan Docker Image with Trivy') {
+            steps {
+                script {
+                    sh 'trivy image ${DOCKER_IMAGE}'
+                }
+            }
+        }
+
+        stage('Push to ECR') {
+            steps {
+                script {
+                    sh """
+                    aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${DOCKER_IMAGE}
+                    docker tag ${DOCKER_IMAGE}:latest ${DOCKER_IMAGE}:latest
+                    docker push ${DOCKER_IMAGE}:latest
+                    """
+                }
+            }
+        }
+
+        stage('Deploy to EC2') {
+            steps {
+                script {
+                    // Write the key to a file (temp key.pem)
+                    writeFile file: 'key.pem', text: "${env.SSH_KEY}"
+                    sh 'chmod 400 key.pem'
+
+                    // SSH and deploy
+                    sh """
+                    ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${EC2_INSTANCE_IP} << 'EOF'
+                    docker pull ${DOCKER_IMAGE}:latest
+                    docker run -d -p 80:80 ${DOCKER_IMAGE}:latest
+                    EOF
+                    """
+
+                    // Clean up the key
+                    sh 'rm -f key.pem'
                 }
             }
         }
@@ -68,7 +77,7 @@ pipeline {
 
     post {
         always {
-            cleanWs()
+            sh 'docker system prune -af'
         }
     }
 }
