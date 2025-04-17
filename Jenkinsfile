@@ -58,7 +58,7 @@ pipeline {
                                 sudo docker stop \$CONTAINER_ID &&
                                 sudo docker rm \$CONTAINER_ID
                             fi
-                            sudo docker run -d -p 8089:80 ${DOCKER_IMAGE}:latest
+                            sudo docker run -d -p 8089:5000 ${DOCKER_IMAGE}:latest
                         '
                         """
                     }
