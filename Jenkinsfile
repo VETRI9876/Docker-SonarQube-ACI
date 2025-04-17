@@ -3,8 +3,8 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = '409784048198.dkr.ecr.eu-north-1.amazonaws.com/vetri'
-        REPO_URL = 'https://github.com/VETRI9876/Docker-SonarQube-ACI.git'
-        EC2_INSTANCE_IP = 'your-ec2-ip'  // Replace with actual IP
+        REPO_URL = 'https://github.com/VETRI9876/Docker-Trivy-ECR-EC2.git'
+        EC2_INSTANCE_IP = '13.53.127.142'  // Replace with actual IP
         AWS_REGION = 'eu-north-1'
         ECR_REPO_NAME = 'vetri'
         SSH_KEY = credentials('KEY_PAIR') // <-- This is the GitHub secret passed as env var
