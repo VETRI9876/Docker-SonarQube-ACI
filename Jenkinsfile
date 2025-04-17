@@ -7,7 +7,7 @@ pipeline {
         EC2_INSTANCE_IP = '13.53.127.142'  // Replace with actual IP
         AWS_REGION = 'eu-north-1'
         ECR_REPO_NAME = 'vetri'
-        SSH_KEY = credentials('KEY_PAIR') // <-- This is the GitHub secret passed as env var
+        SSH_KEY = credentials('KEY_PAIR') // Ensure this exists in Jenkins credentials as a Secret Text
     }
 
     stages {
@@ -56,19 +56,20 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 script {
-                    // Write the key to a file (temp key.pem)
+                    // Save the private key to a file
                     writeFile file: 'key.pem', text: "${env.SSH_KEY}"
                     sh 'chmod 400 key.pem'
 
-                    // SSH and deploy
+                    // SSH into EC2 and deploy the container
                     sh """
                     ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${EC2_INSTANCE_IP} << 'EOF'
                     docker pull ${DOCKER_IMAGE}:latest
+                    docker stop \$(docker ps -q --filter ancestor=${DOCKER_IMAGE}:latest) || true
                     docker run -d -p 80:80 ${DOCKER_IMAGE}:latest
                     EOF
                     """
 
-                    // Clean up the key
+                    // Clean up private key file
                     sh 'rm -f key.pem'
                 }
             }
@@ -77,7 +78,9 @@ pipeline {
 
     post {
         always {
-            sh 'docker system prune -af'
+            node {
+                sh 'docker system prune -af'
+            }
         }
     }
 }
