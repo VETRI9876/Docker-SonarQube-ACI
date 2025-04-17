@@ -65,7 +65,7 @@ pipeline {
                         sudo docker ps -a -q --filter ancestor=${DOCKER_IMAGE}:latest | xargs -r sudo docker rm
                         
                         # Run the Docker container on port 8081 instead of port 80
-                        sudo docker run -d -p 8081:80 ${DOCKER_IMAGE}:latest
+                        sudo docker run -d -p 8085:80 ${DOCKER_IMAGE}:latest
                         EOF
                         """
                     }
