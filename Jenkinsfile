@@ -49,21 +49,21 @@ pipeline {
             steps {
                 script {
                     sshagent(credentials: ['KEY_PAIR']) {
-                        sh '''
-                        ssh -o StrictHostKeyChecking=no ubuntu@13.53.127.142 << 'EOF'
-                        aws ecr get-login-password --region eu-north-1 | sudo docker login --username AWS --password-stdin 409784048198.dkr.ecr.eu-north-1.amazonaws.com/vetri
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_INSTANCE_IP} << EOF
+                        aws ecr get-login-password --region ${AWS_REGION} | sudo docker login --username AWS --password-stdin ${DOCKER_IMAGE}
 
-                        sudo docker pull 409784048198.dkr.ecr.eu-north-1.amazonaws.com/vetri:latest
+                        sudo docker pull ${DOCKER_IMAGE}:latest
 
-                        CONTAINER_ID=$(sudo docker ps -q --filter ancestor=409784048198.dkr.ecr.eu-north-1.amazonaws.com/vetri:latest)
-                        if [ ! -z "$CONTAINER_ID" ]; then
-                            sudo docker stop $CONTAINER_ID
-                            sudo docker rm $CONTAINER_ID
+                        CONTAINER_ID=\$(sudo docker ps -q --filter ancestor=${DOCKER_IMAGE}:latest)
+                        if [ ! -z "\$CONTAINER_ID" ]; then
+                            sudo docker stop \$CONTAINER_ID
+                            sudo docker rm \$CONTAINER_ID
                         fi
 
-                        sudo docker run -d -p 8087:80 409784048198.dkr.ecr.eu-north-1.amazonaws.com/vetri:latest
+                        sudo docker run -d -p 8087:80 ${DOCKER_IMAGE}:latest
                         EOF
-                        '''
+                        """
                     }
                 }
             }
