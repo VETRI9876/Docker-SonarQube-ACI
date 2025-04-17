@@ -50,19 +50,16 @@ pipeline {
                 script {
                     sshagent(credentials: ['KEY_PAIR']) {
                         sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_INSTANCE_IP} << EOF
-                        aws ecr get-login-password --region ${AWS_REGION} | sudo docker login --username AWS --password-stdin ${DOCKER_IMAGE}
-
-                        sudo docker pull ${DOCKER_IMAGE}:latest
-
-                        CONTAINER_ID=\$(sudo docker ps -q --filter ancestor=${DOCKER_IMAGE}:latest)
-                        if [ ! -z "\$CONTAINER_ID" ]; then
-                            sudo docker stop \$CONTAINER_ID
-                            sudo docker rm \$CONTAINER_ID
-                        fi
-
-                        sudo docker run -d -p 8088:80 ${DOCKER_IMAGE}:latest
-                        EOF
+                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_INSTANCE_IP} '
+                            aws ecr get-login-password --region ${AWS_REGION} | sudo docker login --username AWS --password-stdin ${DOCKER_IMAGE} &&
+                            sudo docker pull ${DOCKER_IMAGE}:latest &&
+                            CONTAINER_ID=\$(sudo docker ps -q --filter ancestor=${DOCKER_IMAGE}:latest)
+                            if [ ! -z "\$CONTAINER_ID" ]; then
+                                sudo docker stop \$CONTAINER_ID &&
+                                sudo docker rm \$CONTAINER_ID
+                            fi
+                            sudo docker run -d -p 8089:80 ${DOCKER_IMAGE}:latest
+                        '
                         """
                     }
                 }
