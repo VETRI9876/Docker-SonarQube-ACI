@@ -61,7 +61,7 @@ pipeline {
                             sudo docker rm $CONTAINER_ID
                         fi
 
-                        sudo docker run -d -p 8085:80 409784048198.dkr.ecr.eu-north-1.amazonaws.com/vetri:latest
+                        sudo docker run -d -p 8087:80 409784048198.dkr.ecr.eu-north-1.amazonaws.com/vetri:latest
                         EOF
                         '''
                     }
