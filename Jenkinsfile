@@ -48,13 +48,13 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 script {
-                    // Write the SSH key to file and secure it
-                    writeFile file: 'key.pem', text: "${SSH_KEY}".trim()
-                    sh 'chmod 400 key.pem'
+                    // Write the SSH key to a temporary file location
+                    writeFile file: '/tmp/key.pem', text: "${SSH_KEY}".trim()
+                    sh 'chmod 400 /tmp/key.pem'
 
                     // SSH login to EC2 (use 'ubuntu' as the user for Ubuntu-based AMIs)
                     sh """
-                    ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@${EC2_INSTANCE_IP} << EOF
+                    ssh -o StrictHostKeyChecking=no -i /tmp/key.pem ubuntu@${EC2_INSTANCE_IP} << EOF
                     docker pull ${DOCKER_IMAGE}:latest
                     docker ps -q --filter ancestor=${DOCKER_IMAGE}:latest | xargs -r docker stop
                     docker ps -a -q --filter ancestor=${DOCKER_IMAGE}:latest | xargs -r docker rm
@@ -63,7 +63,7 @@ pipeline {
                     """
 
                     // Clean up the SSH key after the operation
-                    sh 'rm -f key.pem'
+                    sh 'rm -f /tmp/key.pem'
                 }
             }
         }
