@@ -7,8 +7,8 @@ WORKDIR /app
 # Copy code into container
 COPY . /app
 
-# Install Flask
-RUN pip install flask
+# Install Flask and Pytest
+RUN pip install flask pytest
 
 # Expose the port Flask runs on
 EXPOSE 5000
