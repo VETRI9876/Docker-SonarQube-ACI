@@ -7,7 +7,7 @@ pipeline {
         EC2_INSTANCE_IP = '13.53.127.142'
         AWS_REGION = 'eu-north-1'
         ECR_REPO_NAME = 'vetri'
-        SSH_KEY = credentials('KEY_PAIR') // Jenkins secret text (PEM content)
+        SSH_KEY = credentials('KEY_PAIR') // Jenkins SSH key credential
     }
 
     stages {
@@ -39,8 +39,8 @@ pipeline {
         stage('Push to ECR') {
             steps {
                 sh """
-                aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${DOCKER_IMAGE}
-                docker push ${DOCKER_IMAGE}:latest
+                    aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${DOCKER_IMAGE}
+                    docker push ${DOCKER_IMAGE}:latest
                 """
             }
         }
@@ -48,26 +48,22 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 script {
-                    // Use ssh-agent to load the SSH key
                     sshagent(credentials: ['KEY_PAIR']) {
-                        // SSH login to EC2 (use 'ubuntu' as the user for Ubuntu-based AMIs)
-                        sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_INSTANCE_IP} << 'EOF'
-                        
-                        # Authenticate with AWS ECR
-                        aws ecr get-login-password --region ${AWS_REGION} | sudo docker login --username AWS --password-stdin ${DOCKER_IMAGE}
-                        
-                        # Pull the latest image from ECR
-                        sudo docker pull ${DOCKER_IMAGE}:latest
-                        
-                        # Stop and remove any existing containers
-                        sudo docker ps -q --filter ancestor=${DOCKER_IMAGE}:latest | xargs -r sudo docker stop
-                        sudo docker ps -a -q --filter ancestor=${DOCKER_IMAGE}:latest | xargs -r sudo docker rm
-                        
-                        # Run the Docker container on port 8081 instead of port 80
-                        sudo docker run -d -p 8085:80 ${DOCKER_IMAGE}:latest
+                        sh '''
+                        ssh -o StrictHostKeyChecking=no ubuntu@13.53.127.142 << 'EOF'
+                        aws ecr get-login-password --region eu-north-1 | sudo docker login --username AWS --password-stdin 409784048198.dkr.ecr.eu-north-1.amazonaws.com/vetri
+
+                        sudo docker pull 409784048198.dkr.ecr.eu-north-1.amazonaws.com/vetri:latest
+
+                        CONTAINER_ID=$(sudo docker ps -q --filter ancestor=409784048198.dkr.ecr.eu-north-1.amazonaws.com/vetri:latest)
+                        if [ ! -z "$CONTAINER_ID" ]; then
+                            sudo docker stop $CONTAINER_ID
+                            sudo docker rm $CONTAINER_ID
+                        fi
+
+                        sudo docker run -d -p 8085:80 409784048198.dkr.ecr.eu-north-1.amazonaws.com/vetri:latest
                         EOF
-                        """
+                        '''
                     }
                 }
             }
@@ -76,8 +72,7 @@ pipeline {
 
     post {
         always {
-            // Clean up Docker images to free space
-            sh 'docker system prune -af'
+            sh 'docker system prune -af || true'
         }
     }
 }
