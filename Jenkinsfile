@@ -7,7 +7,7 @@ pipeline {
         EC2_INSTANCE_IP = '51.20.93.114'
         AWS_REGION = 'eu-north-1'
         ECR_REPO_NAME = 'vetri'
-        SSH_KEY = credentials('KEY_PAIR') // Jenkins SSH key credential
+        SSH_KEY = credentials('KEY_PAIR') 
     }
 
     stages {
